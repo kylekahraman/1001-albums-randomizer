@@ -177,7 +177,10 @@ h1 {
   position: relative;
 }
 
-.album-summary.expanded { max-height: none; }
+.album-summary.expanded {
+  max-height: 300px;
+  overflow-y: auto;
+}
 
 .album-summary:not(.expanded)::after {
   content: '';
@@ -651,24 +654,35 @@ h1 {
       albumCoverPH.classList.add('hidden');
     };
 
-    albumCover.onerror = async () => {
+    async function tryFallback() {
       if (fallbackTried) return;
       fallbackTried = true;
 
-      // Spotify CDN blocked — try Deezer API
       try {
-        const q = encodeURIComponent(album.artist + ' ' + album.title);
-        const r = await fetch(
-          'https://api.deezer.com/search/album?q=' + q + '&limit=1'
+        const q = encodeURIComponent('artist:' + album.artist + ' AND release:' + album.title);
+        const mb = await fetch(
+          'https://musicbrainz.org/ws/2/release-group/?query=' + q + '&limit=1&fmt=json',
+          { headers: { 'User-Agent': '1001albums/1.0' } }
         );
-        const d = await r.json();
-        if (d.data && d.data.length > 0) {
-          albumCover.src = d.data[0].cover_big;
+        const data = await mb.json();
+        if (data['release-groups'] && data['release-groups'].length > 0) {
+          const mbid = data['release-groups'][0].id;
+          // Cover Art Archive redirects to archive.org — browser follows automatically
+          albumCover.src = 'https://coverartarchive.org/release-group/' + mbid + '/front';
         }
       } catch {}
-    };
+    }
+
+    albumCover.onerror = tryFallback;
 
     albumCover.src = album.imgUrl || '';
+
+    // Safety: some browsers never fire onerror for dead CDNs — force after 5s
+    setTimeout(() => {
+      if (!albumCover.complete || albumCover.naturalWidth === 0) {
+        tryFallback();
+      }
+    }, 5000);
 
     albumTitle.textContent = album.title;
     albumArtist.textContent = album.artist;
