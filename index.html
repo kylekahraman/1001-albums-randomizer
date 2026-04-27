@@ -637,30 +637,38 @@ h1 {
     albumCard.classList.remove('hidden');
     userSection.classList.remove('hidden');
 
-    // Reset previous image state
+    // ── Album art with iTunes fallback ────────────────────
     albumCover.onload = null;
     albumCover.onerror = null;
 
-    // Show placeholder, hide img until it loads
     albumCover.classList.add('hidden');
     albumCoverPH.classList.remove('hidden');
+
+    let fallbackTried = false;
 
     albumCover.onload = () => {
       albumCover.classList.remove('hidden');
       albumCoverPH.classList.add('hidden');
     };
 
-    albumCover.src = album.imgUrl || '';
+    albumCover.onerror = async () => {
+      if (fallbackTried) return;
+      fallbackTried = true;
 
-    // Safety timeout: if image never loads, placeholder stays
-    if (album.imgUrl) {
-      setTimeout(() => {
-        if (!albumCover.complete || albumCover.naturalWidth === 0) {
-          albumCover.classList.add('hidden');
-          albumCoverPH.classList.remove('hidden');
+      // Spotify CDN blocked — try Deezer API
+      try {
+        const q = encodeURIComponent(album.artist + ' ' + album.title);
+        const r = await fetch(
+          'https://api.deezer.com/search/album?q=' + q + '&limit=1'
+        );
+        const d = await r.json();
+        if (d.data && d.data.length > 0) {
+          albumCover.src = d.data[0].cover_big;
         }
-      }, 6000);
-    }
+      } catch {}
+    };
+
+    albumCover.src = album.imgUrl || '';
 
     albumTitle.textContent = album.title;
     albumArtist.textContent = album.artist;
