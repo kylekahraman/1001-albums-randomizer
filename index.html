@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1001 Albums Randomizer</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f0f14;
+  --surface: #1a1a24;
+  --border: #2a2a3a;
+  --text: #e0e0e0;
+  --text-muted: #888;
+  --accent: #e8b34b;
+  --accent-dim: #7a5f2a;
+  --danger: #c0392b;
+  --radius: 10px;
+  --max-w: 720px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+.container {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 24px 16px 60px;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+h1 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 12px;
+}
+
+.stats-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: center;
+}
+
+.progress-track {
+  flex: 1;
+  max-width: 300px;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.stats-text {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Welcome */
+.welcome {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+}
+
+/* Album Card */
+.album-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.hidden { display: none !important; }
+
+.album-header {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.album-cover {
+  width: 160px;
+  height: 160px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--border);
+}
+
+.album-cover-placeholder {
+  width: 160px;
+  height: 160px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  background: var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  color: var(--text-muted);
+}
+
+.album-meta { flex: 1; min-width: 0; }
+
+.album-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.album-artist {
+  font-size: 1rem;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+
+.album-year {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.genre-tag {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: var(--border);
+  color: var(--text-muted);
+}
+
+.community-rating {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.community-rating .stars { color: var(--accent); }
+
+.album-summary {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+  margin-bottom: 16px;
+  max-height: 150px;
+  overflow: hidden;
+  position: relative;
+}
+
+.album-summary.expanded { max-height: none; }
+
+.album-summary:not(.expanded)::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: linear-gradient(transparent, var(--surface));
+}
+
+.show-more {
+  font-size: 0.8rem;
+  color: var(--accent);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  margin-bottom: 16px;
+}
+
+.show-more:hover { text-decoration: underline; }
+
+.album-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.album-links a {
+  font-size: 0.8rem;
+  padding: 5px 12px;
+  border-radius: 6px;
+  text-decoration: none;
+  background: var(--border);
+  color: var(--text);
+  transition: background 0.15s;
+}
+
+.album-links a:hover { background: var(--accent-dim); color: white; }
+
+/* User rating section */
+.user-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+
+.rating-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.rating-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.star-rating {
+  display: flex;
+  gap: 4px;
+}
+
+.star {
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--border);
+  transition: color 0.1s;
+  user-select: none;
+}
+
+.star.active { color: var(--accent); }
+.star.hover { color: var(--accent); }
+
+.notes-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.notes-box {
+  width: 100%;
+  min-height: 80px;
+  padding: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.notes-box:focus { border-color: var(--accent-dim); }
+
+/* Controls */
+.controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 30px;
+}
+
+.btn {
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+}
+
+.btn-primary:hover { background: #d4a43a; }
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+
+.btn-secondary:hover { background: var(--border); color: var(--text); }
+
+.btn-danger {
+  background: transparent;
+  color: var(--danger);
+  border-color: var(--danger);
+  opacity: 0.6;
+}
+.btn-danger:hover { opacity: 1; background: rgba(192,57,43,0.1); }
+
+/* History */
+.history-section {
+  margin-top: 10px;
+}
+
+.history-section h3 {
+  font-size: 1rem;
+  margin-bottom: 12px;
+  color: var(--text-muted);
+}
+
+.history-list {
+  list-style: none;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+  transition: background 0.1s;
+}
+
+.history-item:hover { background: var(--surface); }
+
+.history-item .hi-cover {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--border);
+}
+
+.history-item .hi-info { flex: 1; min-width: 0; }
+
+.history-item .hi-title {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-item .hi-artist {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-item .hi-rating {
+  color: var(--accent);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.history-item .hi-notes-icon {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.toast.show { opacity: 1; }
+
+/* All done state */
+.all-done {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.all-done h2 { font-size: 1.3rem; margin-bottom: 8px; color: var(--accent); }
+.all-done p { color: var(--text-muted); }
+
+@media (max-width: 500px) {
+  .album-header { flex-direction: column; align-items: center; text-align: center; }
+  .album-cover, .album-cover-placeholder { width: 200px; height: 200px; }
+  .genres { justify-content: center; }
+  .community-rating { justify-content: center; }
+  h1 { font-size: 1.4rem; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>1001 Albums Randomizer</h1>
+    <div class="stats-bar">
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+      </div>
+      <span class="stats-text" id="statsText">0 / 1001 suggested</span>
+    </div>
+  </header>
+
+  <div class="welcome" id="welcome">
+    Discover albums you must hear before you die.<br>Click below to get your first suggestion.
+  </div>
+
+  <div class="album-card hidden" id="albumCard">
+    <div class="album-header">
+      <img class="album-cover" id="albumCover" alt="" referrerpolicy="no-referrer" />
+      <div class="album-cover-placeholder hidden" id="albumCoverPH">🎵</div>
+      <div class="album-meta">
+        <div class="album-title" id="albumTitle"></div>
+        <div class="album-artist" id="albumArtist"></div>
+        <div class="album-year" id="albumYear"></div>
+        <div class="genres" id="albumGenres"></div>
+        <div class="community-rating" id="albumCommRating"></div>
+      </div>
+    </div>
+    <div class="album-summary" id="albumSummary"></div>
+    <button class="show-more" id="showMoreBtn" style="display:none">Show more</button>
+    <div class="album-links" id="albumLinks"></div>
+  </div>
+
+  <div class="user-section hidden" id="userSection">
+    <div class="rating-row">
+      <span class="rating-label">Your rating:</span>
+      <div class="star-rating" id="starRating"></div>
+    </div>
+    <label class="notes-label" for="notesBox">Notes:</label>
+    <textarea class="notes-box" id="notesBox" placeholder="Write your thoughts about this album..."></textarea>
+  </div>
+
+  <div class="all-done hidden" id="allDone">
+    <h2>You've seen all 1001 albums!</h2>
+    <p>Impressive. You can export your history below or reset to start over.</p>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-primary" id="randomBtn">Random Album</button>
+    <button class="btn btn-secondary" id="exportBtn">Export History</button>
+    <button class="btn btn-secondary" id="importBtn">Import History</button>
+    <button class="btn btn-danger" id="resetBtn">Reset</button>
+  </div>
+
+  <div class="history-section" id="historySection" style="display:none">
+    <h3>Suggested Albums</h3>
+    <ul class="history-list" id="historyList"></ul>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="album-data.js"></script>
+<script>
+(function () {
+  const HISTORY_KEY = 'album_randomizer_history';
+  const CURRENT_KEY = 'album_randomizer_current';
+
+  // ── State ──────────────────────────────────────────────
+  let history = {};
+  let currentAlbum = null;
+  let notesTimer = null;
+
+  function loadHistory() {
+    try {
+      history = JSON.parse(localStorage.getItem(HISTORY_KEY)) || {};
+    } catch { history = {}; }
+  }
+
+  function saveHistory() {
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    } catch (e) {
+      toast('Could not save history (localStorage may be full)');
+    }
+  }
+
+  function saveCurrent() {
+    try {
+      localStorage.setItem(CURRENT_KEY, JSON.stringify(currentAlbum));
+    } catch {}
+  }
+
+  function loadCurrent() {
+    try {
+      currentAlbum = JSON.parse(localStorage.getItem(CURRENT_KEY));
+    } catch { currentAlbum = null; }
+  }
+
+  // ── DOM refs ───────────────────────────────────────────
+  const $ = id => document.getElementById(id);
+  const welcome     = $('welcome');
+  const albumCard   = $('albumCard');
+  const albumCover  = $('albumCover');
+  const albumCoverPH = $('albumCoverPH');
+  const albumTitle  = $('albumTitle');
+  const albumArtist = $('albumArtist');
+  const albumYear   = $('albumYear');
+  const albumGenres = $('albumGenres');
+  const albumCommRating = $('albumCommRating');
+  const albumSummary = $('albumSummary');
+  const showMoreBtn  = $('showMoreBtn');
+  const albumLinks  = $('albumLinks');
+  const userSection = $('userSection');
+  const starRating  = $('starRating');
+  const notesBox    = $('notesBox');
+  const randomBtn   = $('randomBtn');
+  const statsText   = $('statsText');
+  const progressFill = $('progressFill');
+  const historyList  = $('historyList');
+  const historySection = $('historySection');
+  const allDone     = $('allDone');
+  const toastEl     = $('toast');
+
+  // ── Compute stats ──────────────────────────────────────
+  const totalAlbums = typeof ALBUMS !== 'undefined' ? ALBUMS.length : 0;
+
+  function updateStats() {
+    const done = Object.keys(history).length;
+    const pct = totalAlbums ? Math.round((done / totalAlbums) * 100) : 0;
+    statsText.textContent = done + ' / ' + totalAlbums + ' suggested';
+    progressFill.style.width = pct + '%';
+
+    if (done === totalAlbums && totalAlbums > 0) {
+      welcome.classList.add('hidden');
+      albumCard.classList.add('hidden');
+      userSection.classList.add('hidden');
+      allDone.classList.remove('hidden');
+      randomBtn.disabled = true;
+    } else {
+      allDone.classList.add('hidden');
+      randomBtn.disabled = false;
+    }
+  }
+
+  // ── Star rating rendering ──────────────────────────────
+  function renderStars(currentRating) {
+    starRating.innerHTML = '';
+    for (let i = 1; i <= 5; i++) {
+      const s = document.createElement('span');
+      s.className = 'star' + (i <= currentRating ? ' active' : '');
+      s.textContent = i <= currentRating ? '★' : '☆';
+      s.dataset.value = i;
+      s.addEventListener('click', () => setRating(i));
+      s.addEventListener('mouseenter', () => highlightStars(i));
+      starRating.appendChild(s);
+    }
+    starRating.addEventListener('mouseleave', () => {
+      const entry = currentAlbum ? history[currentAlbum.path] : null;
+      highlightStars(entry ? entry.rating || 0 : 0);
+    });
+  }
+
+  function highlightStars(n) {
+    const stars = starRating.querySelectorAll('.star');
+    stars.forEach((s, idx) => {
+      const on = (idx + 1) <= n;
+      s.className = 'star' + (on ? ' hover' : '');
+      s.textContent = on ? '★' : '☆';
+    });
+  }
+
+  function setRating(value) {
+    if (!currentAlbum) return;
+    const entry = history[currentAlbum.path] || {};
+    entry.rating = value;
+    entry.suggestedAt = entry.suggestedAt || Date.now();
+    history[currentAlbum.path] = entry;
+    saveHistory();
+    renderStars(value);
+    renderHistory();
+  }
+
+  // ── Notes ──────────────────────────────────────────────
+  function debouncedSaveNotes() {
+    clearTimeout(notesTimer);
+    notesTimer = setTimeout(() => {
+      if (!currentAlbum) return;
+      const entry = history[currentAlbum.path] || {};
+      entry.notes = notesBox.value;
+      entry.suggestedAt = entry.suggestedAt || Date.now();
+      history[currentAlbum.path] = entry;
+      saveHistory();
+      renderHistory();
+    }, 500);
+  }
+
+  // ── Render album ───────────────────────────────────────
+  function renderAlbum(album) {
+    currentAlbum = album;
+    saveCurrent();
+
+    welcome.classList.add('hidden');
+    albumCard.classList.remove('hidden');
+    userSection.classList.remove('hidden');
+
+    // Reset previous image state
+    albumCover.onload = null;
+    albumCover.onerror = null;
+
+    // Show placeholder, hide img until it loads
+    albumCover.classList.add('hidden');
+    albumCoverPH.classList.remove('hidden');
+
+    albumCover.onload = () => {
+      albumCover.classList.remove('hidden');
+      albumCoverPH.classList.add('hidden');
+    };
+
+    albumCover.src = album.imgUrl || '';
+
+    // Safety timeout: if image never loads, placeholder stays
+    if (album.imgUrl) {
+      setTimeout(() => {
+        if (!albumCover.complete || albumCover.naturalWidth === 0) {
+          albumCover.classList.add('hidden');
+          albumCoverPH.classList.remove('hidden');
+        }
+      }, 6000);
+    }
+
+    albumTitle.textContent = album.title;
+    albumArtist.textContent = album.artist;
+    albumYear.textContent = album.year;
+
+    albumGenres.innerHTML = (album.genres || []).map(g =>
+      '<span class="genre-tag">' + escapeHTML(g) + '</span>'
+    ).join('');
+
+    const filledStars = Math.round((album.avg_rating || 0) * 2) / 2;
+    albumCommRating.innerHTML =
+      '<span class="stars">' + renderStarChars(filledStars) + '</span> ' +
+      (album.avg_rating ? album.avg_rating.toFixed(2) : 'N/A') +
+      (album.nr_of_votes ? ' (' + album.nr_of_votes.toLocaleString() + ' votes)' : '');
+
+    albumSummary.textContent = album.summary || '';
+    albumSummary.classList.remove('expanded');
+
+    if (album.summary && album.summary.length > 400) {
+      showMoreBtn.style.display = '';
+      showMoreBtn.textContent = 'Show more';
+    } else {
+      showMoreBtn.style.display = 'none';
+    }
+
+    albumLinks.innerHTML = buildLinks(album).map(l =>
+      '<a href="' + escapeHTML(l.url) + '" target="_blank" rel="noopener">' + escapeHTML(l.label) + '</a>'
+    ).join('');
+
+    // Load saved rating/notes
+    const entry = history[album.path] || {};
+    renderStars(entry.rating || 0);
+    notesBox.value = entry.notes || '';
+
+    // Auto-add to history if not already
+    if (!history[album.path]) {
+      history[album.path] = { suggestedAt: Date.now() };
+      saveHistory();
+    }
+
+    updateStats();
+    renderHistory();
+  }
+
+  function renderStarChars(n) {
+    let s = '';
+    for (let i = 1; i <= 5; i++) {
+      if (i <= n) s += '★';
+      else if (i - 0.5 === n) s += '½';
+      else s += '☆';
+    }
+    return s;
+  }
+
+  function buildLinks(album) {
+    const links = [];
+    if (album.spotify) {
+      const id = album.spotify.replace('spotify:album:', '');
+      links.push({ label: 'Spotify', url: 'https://open.spotify.com/album/' + id });
+    }
+    if (album.youtube) links.push({ label: 'YouTube', url: album.youtube });
+    if (album.apple_music) links.push({ label: 'Apple Music', url: album.apple_music });
+    if (album.wikipedia) links.push({ label: 'Wikipedia', url: album.wikipedia });
+    return links;
+  }
+
+  function escapeHTML(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // ── Random selection ───────────────────────────────────
+  function randomAlbum() {
+    if (typeof ALBUMS === 'undefined') {
+      toast('Album data not loaded. Check that album-data.js exists.');
+      return;
+    }
+    const suggested = new Set(Object.keys(history));
+    const pool = ALBUMS.filter(a => !suggested.has(a.path));
+    if (pool.length === 0) {
+      updateStats();
+      return;
+    }
+    const album = pool[Math.floor(Math.random() * pool.length)];
+    renderAlbum(album);
+  }
+
+  // ── History display ────────────────────────────────────
+  function renderHistory() {
+    const entries = Object.entries(history).sort((a, b) => b[1].suggestedAt - a[1].suggestedAt);
+    if (entries.length === 0) {
+      historySection.style.display = 'none';
+      return;
+    }
+    historySection.style.display = '';
+
+    // Build album path -> album lookup
+    const albumMap = {};
+    if (typeof ALBUMS !== 'undefined') {
+      ALBUMS.forEach(a => { albumMap[a.path] = a; });
+    }
+
+    historyList.innerHTML = entries.map(([path, data]) => {
+      const album = albumMap[path];
+      if (!album) return '';
+      const stars = data.rating ? '★'.repeat(data.rating) + '☆'.repeat(5 - data.rating) : '';
+      const hasNotes = data.notes && data.notes.trim() ? ' 📝' : '';
+      return '<li class="history-item">' +
+        '<img class="hi-cover" src="' + escapeHTML(album.imgUrl || '') + '" alt="" loading="lazy" onerror="this.style.display=\'none\'"/>' +
+        '<div class="hi-info">' +
+          '<div class="hi-title">' + escapeHTML(album.title) + '</div>' +
+          '<div class="hi-artist">' + escapeHTML(album.artist) + ' (' + album.year + ')' + '</div>' +
+        '</div>' +
+        '<span class="hi-rating">' + stars + '</span>' +
+        '<span class="hi-notes-icon">' + hasNotes + '</span>' +
+      '</li>';
+    }).join('');
+  }
+
+  // ── Export / Import / Reset ────────────────────────────
+  function exportHistory() {
+    const blob = new Blob([JSON.stringify(history, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'album-history.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('History exported!');
+  }
+
+  function importHistory() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (re) => {
+        try {
+          const data = JSON.parse(re.target.result);
+          if (typeof data !== 'object') throw new Error('Invalid format');
+          history = data;
+          saveHistory();
+          updateStats();
+          renderHistory();
+          if (currentAlbum) {
+            const entry = history[currentAlbum.path] || {};
+            renderStars(entry.rating || 0);
+            notesBox.value = entry.notes || '';
+          }
+          toast('History imported!');
+        } catch {
+          toast('Invalid JSON file');
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  }
+
+  function resetHistory() {
+    if (!confirm('Delete all history? This cannot be undone.')) return;
+    history = {};
+    saveHistory();
+    currentAlbum = null;
+    saveCurrent();
+    welcome.classList.remove('hidden');
+    albumCard.classList.add('hidden');
+    userSection.classList.add('hidden');
+    allDone.classList.add('hidden');
+    updateStats();
+    renderHistory();
+    toast('History cleared');
+  }
+
+  // ── Toast ──────────────────────────────────────────────
+  let toastTimer = null;
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2000);
+  }
+
+  // ── Event listeners ────────────────────────────────────
+  randomBtn.addEventListener('click', randomAlbum);
+
+  showMoreBtn.addEventListener('click', () => {
+    const expanded = albumSummary.classList.toggle('expanded');
+    showMoreBtn.textContent = expanded ? 'Show less' : 'Show more';
+  });
+
+  notesBox.addEventListener('input', debouncedSaveNotes);
+
+  $('exportBtn').addEventListener('click', exportHistory);
+  $('importBtn').addEventListener('click', importHistory);
+  $('resetBtn').addEventListener('click', resetHistory);
+
+  // ── Init ───────────────────────────────────────────────
+  loadHistory();
+  loadCurrent();
+  updateStats();
+  renderHistory();
+
+  if (currentAlbum) {
+    renderAlbum(currentAlbum);
+  } else {
+    welcome.classList.remove('hidden');
+  }
+})();
+</script>
+</body>
+</html>
