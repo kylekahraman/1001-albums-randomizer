@@ -745,49 +745,41 @@ h1 {
     albumCard.classList.remove('hidden');
     userSection.classList.remove('hidden');
 
-    // ── Album art with iTunes fallback ────────────────────
+    // ── Album art: race primary + fallback ────────────────────
     albumCover.onload = null;
     albumCover.onerror = null;
 
     albumCover.classList.add('hidden');
     albumCoverPH.classList.remove('hidden');
 
-    let fallbackTried = false;
+    let coverLoaded = false;
+    let fallbackFired = false;
 
     albumCover.onload = () => {
+      if (coverLoaded) return;
+      coverLoaded = true;
       albumCover.classList.remove('hidden');
       albumCoverPH.classList.add('hidden');
     };
 
-    async function tryFallback() {
-      if (fallbackTried) return;
-      fallbackTried = true;
-
-      try {
-        const q = encodeURIComponent('artist:' + album.artist + ' AND release:' + album.title);
-        const mb = await fetch(
-          'https://musicbrainz.org/ws/2/release-group/?query=' + q + '&limit=1&fmt=json',
-          { headers: { 'User-Agent': '1001albums/1.0' } }
-        );
-        const data = await mb.json();
-        if (data['release-groups'] && data['release-groups'].length > 0) {
-          const mbid = data['release-groups'][0].id;
-          // Cover Art Archive redirects to archive.org — browser follows automatically
-          albumCover.src = 'https://coverartarchive.org/release-group/' + mbid + '/front';
-        }
-      } catch {}
-    }
-
-    albumCover.onerror = tryFallback;
+    // Start fallback fetch immediately (don't wait for primary to fail)
+    const q = encodeURIComponent('artist:' + album.artist + ' AND release:' + album.title);
+    fetch(
+      'https://musicbrainz.org/ws/2/release-group/?query=' + q + '&limit=1&fmt=json',
+      { headers: { 'User-Agent': '1001albums/1.0' } }
+    )
+    .then(r => r.json())
+    .then(data => {
+      if (coverLoaded || fallbackFired) return;
+      fallbackFired = true;
+      if (data['release-groups'] && data['release-groups'].length > 0) {
+        const mbid = data['release-groups'][0].id;
+        albumCover.src = 'https://coverartarchive.org/release-group/' + mbid + '/front';
+      }
+    })
+    .catch(() => {});
 
     albumCover.src = album.imgUrl || '';
-
-    // Safety: some browsers never fire onerror for dead CDNs — force after 5s
-    setTimeout(() => {
-      if (!albumCover.complete || albumCover.naturalWidth === 0) {
-        tryFallback();
-      }
-    }, 5000);
 
     albumTitle.textContent = album.title;
     albumArtist.textContent = album.artist;
