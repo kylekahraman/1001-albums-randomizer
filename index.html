@@ -745,7 +745,7 @@ h1 {
     albumCard.classList.remove('hidden');
     userSection.classList.remove('hidden');
 
-    // ── Album art: race primary + fallback ────────────────────
+    // ── Album art ─────────────────────────────────────────────
     albumCover.onload = null;
     albumCover.onerror = null;
 
@@ -753,33 +753,21 @@ h1 {
     albumCoverPH.classList.remove('hidden');
 
     let coverLoaded = false;
-    let fallbackFired = false;
-
     albumCover.onload = () => {
       if (coverLoaded) return;
       coverLoaded = true;
       albumCover.classList.remove('hidden');
       albumCoverPH.classList.add('hidden');
     };
+    albumCover.onerror = () => {
+      if (coverLoaded) return;
+      coverLoaded = true;
+      albumCover.classList.add('hidden');
+      albumCoverPH.classList.remove('hidden');
+    };
 
-    // Start fallback fetch immediately (don't wait for primary to fail)
-    const q = encodeURIComponent('artist:' + album.artist + ' AND release:' + album.title);
-    fetch(
-      'https://musicbrainz.org/ws/2/release-group/?query=' + q + '&limit=1&fmt=json',
-      { headers: { 'User-Agent': '1001albums/1.0' } }
-    )
-    .then(r => r.json())
-    .then(data => {
-      if (coverLoaded || fallbackFired) return;
-      fallbackFired = true;
-      if (data['release-groups'] && data['release-groups'].length > 0) {
-        const mbid = data['release-groups'][0].id;
-        albumCover.src = 'https://coverartarchive.org/release-group/' + mbid + '/front';
-      }
-    })
-    .catch(() => {});
-
-    albumCover.src = album.imgUrl || '';
+    // Pre-resolved Cover Art Archive URL → archive.org (instant, no API call)
+    albumCover.src = album.coverUrl || album.imgUrl || '';
 
     albumTitle.textContent = album.title;
     albumArtist.textContent = album.artist;
