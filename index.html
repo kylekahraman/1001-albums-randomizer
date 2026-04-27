@@ -75,6 +75,71 @@ h1 {
   white-space: nowrap;
 }
 
+/* Filter panel */
+.filters {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+
+.filter-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.filter-group:last-child { margin-bottom: 0; }
+
+.filter-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  padding-top: 5px;
+  min-width: 48px;
+}
+
+.filter-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  flex: 1;
+}
+
+.filter-pill {
+  font-size: 0.72rem;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.12s;
+  user-select: none;
+}
+
+.filter-pill:hover {
+  background: var(--accent-dim);
+  color: var(--text);
+}
+
+.filter-pill.active {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+}
+
+.filter-info {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+.filter-info span { color: var(--accent); }
+
 /* Welcome */
 .welcome {
   text-align: center;
@@ -446,6 +511,18 @@ h1 {
     </div>
   </header>
 
+  <div class="filters" id="filters">
+    <div class="filter-group">
+      <span class="filter-label">Genre:</span>
+      <div class="filter-pills" id="genrePills"></div>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Decade:</span>
+      <div class="filter-pills" id="decadePills"></div>
+    </div>
+    <div class="filter-info" id="filterInfo"></div>
+  </div>
+
   <div class="welcome" id="welcome">
     Discover albums you must hear before you die.<br>Click below to get your first suggestion.
   </div>
@@ -557,15 +634,43 @@ h1 {
   const historySection = $('historySection');
   const allDone     = $('allDone');
   const toastEl     = $('toast');
+  const genrePills  = $('genrePills');
+  const decadePills = $('decadePills');
+  const filterInfo  = $('filterInfo');
 
   // ── Compute stats ──────────────────────────────────────
   const totalAlbums = typeof ALBUMS !== 'undefined' ? ALBUMS.length : 0;
+
+  // Filter state
+  let filterGenres = new Set();
+  let filterDecades = new Set();
+
+  function matchesFilters(album) {
+    if (filterGenres.size > 0) {
+      if (!(album.genres || []).some(g => filterGenres.has(g))) return false;
+    }
+    if (filterDecades.size > 0) {
+      const y = parseInt(album.year);
+      if (isNaN(y)) return false;
+      if (!filterDecades.has(Math.floor(y / 10) * 10)) return false;
+    }
+    return true;
+  }
 
   function updateStats() {
     const done = Object.keys(history).length;
     const pct = totalAlbums ? Math.round((done / totalAlbums) * 100) : 0;
     statsText.textContent = done + ' / ' + totalAlbums + ' suggested';
     progressFill.style.width = pct + '%';
+
+    // Filter info line
+    const matching = typeof ALBUMS !== 'undefined' ? ALBUMS.filter(matchesFilters).length : 0;
+    const remaining = typeof ALBUMS !== 'undefined'
+      ? ALBUMS.filter(a => matchesFilters(a) && !history[a.path]).length : 0;
+    const anyFilter = filterGenres.size > 0 || filterDecades.size > 0;
+    filterInfo.innerHTML = anyFilter
+      ? '<span>' + matching + '</span> albums match filters &middot; <span>' + remaining + '</span> remaining'
+      : '';
 
     if (done === totalAlbums && totalAlbums > 0) {
       welcome.classList.add('hidden');
@@ -758,13 +863,16 @@ h1 {
   // ── Random selection ───────────────────────────────────
   function randomAlbum() {
     if (typeof ALBUMS === 'undefined') {
-      toast('Album data not loaded. Check that album-data.js exists.');
+      toast('Album data not loaded.');
       return;
     }
     const suggested = new Set(Object.keys(history));
-    const pool = ALBUMS.filter(a => !suggested.has(a.path));
+    const pool = ALBUMS.filter(a => matchesFilters(a) && !suggested.has(a.path));
     if (pool.length === 0) {
       updateStats();
+      toast(filterGenres.size > 0 || filterDecades.size > 0
+        ? 'No matching albums left. Try different filters.'
+        : 'All albums already suggested!');
       return;
     }
     const album = pool[Math.floor(Math.random() * pool.length)];
@@ -870,6 +978,54 @@ h1 {
     toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2000);
   }
 
+  // ── Filter UI builder ──────────────────────────────────
+  function buildFilterUI() {
+    if (typeof ALBUMS === 'undefined') return;
+
+    // Genres — sorted by frequency
+    const counts = {};
+    ALBUMS.forEach(a => (a.genres || []).forEach(g => counts[g] = (counts[g] || 0) + 1));
+    const genres = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(e => e[0]);
+
+    genrePills.innerHTML = '';
+    genres.forEach(g => {
+      const pill = document.createElement('span');
+      pill.className = 'filter-pill';
+      pill.textContent = g + ' (' + counts[g] + ')';
+      pill.addEventListener('click', () => {
+        if (filterGenres.has(g)) {
+          filterGenres.delete(g);
+          pill.classList.remove('active');
+        } else {
+          filterGenres.add(g);
+          pill.classList.add('active');
+        }
+        updateStats();
+      });
+      genrePills.appendChild(pill);
+    });
+
+    // Decades 50s–20s
+    decadePills.innerHTML = '';
+    const decades = [1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020];
+    decades.forEach(d => {
+      const pill = document.createElement('span');
+      pill.className = 'filter-pill';
+      pill.textContent = d + 's';
+      pill.addEventListener('click', () => {
+        if (filterDecades.has(d)) {
+          filterDecades.delete(d);
+          pill.classList.remove('active');
+        } else {
+          filterDecades.add(d);
+          pill.classList.add('active');
+        }
+        updateStats();
+      });
+      decadePills.appendChild(pill);
+    });
+  }
+
   // ── Event listeners ────────────────────────────────────
   randomBtn.addEventListener('click', randomAlbum);
 
@@ -887,6 +1043,7 @@ h1 {
   // ── Init ───────────────────────────────────────────────
   loadHistory();
   loadCurrent();
+  buildFilterUI();
   updateStats();
   renderHistory();
 
